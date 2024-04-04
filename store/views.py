@@ -1,6 +1,7 @@
-from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from category.models import Category
+from carts.views import _cart_id
+from carts.models import CartItem
 
 from .models import Product
 
@@ -29,15 +30,14 @@ def store(request, category_slug=None):
 def product_detail(request, category_slug, product_slug):
     try:
         single_product = Product.objects.get(category__slug=category_slug, slug=product_slug)
-    except Product.DoesNotExist:
-        # Handle the case where the product does not exist
-        return HttpResponse("Product not found", status=404)
+        in_cart = CartItem.objects.filter(cart__cart_id=_cart_id(request), product=single_product).exists()
+
     except Exception as e:
-        # Handle other exceptions
-        return HttpResponse("An error occurred", status=500)
+        raise e
 
     context = {
-        'single_product': single_product
+        'single_product': single_product,
+        'in_cart': in_cart,
     }
 
     return render(request, 'store/product_detail.html', context)
