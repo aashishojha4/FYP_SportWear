@@ -3366,6 +3366,16 @@ input[type=button].btn-block {
   clip: rect(0, 0, 0, 0);
   pointer-events: none;
 }
+/* Set consistent width, height, and padding for the buttons and input field */
+.input-group .btn,
+.input-group input.form-control {
+    width: 50px; /* Set a consistent width for buttons and input field */
+    height: 40px; /* Set a consistent height for buttons and input field */
+    padding: 0; /* Remove padding if needed */
+    text-align: center; /* Center-align content */
+    border-radius: 0; /* Optional: Remove border radius for a box-like shape */
+}
+
 
 .input-group {
   position: relative;
@@ -3382,6 +3392,7 @@ input[type=button].btn-block {
   flex: 1 1 auto;
   width: 1%;
   margin-bottom: 0;
+  height: 46px;
 }
 .input-group > .form-control + .form-control,
 .input-group > .form-control + .custom-select,
