@@ -1,5 +1,8 @@
-import email
-
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.template.loader import render_to_string
+from django.core.mail import send_mail
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
@@ -36,7 +39,7 @@ class MyAccountManager(BaseUserManager):
         user.is_admin = True
         user.is_active = True
         user.is_staff = True
-        user .is_superadmin = True
+        user.is_superadmin = True
         user.save(using=self._db)
         return user
 
