@@ -25,6 +25,7 @@ class MyAccountManager(BaseUserManager):
         )
 
         user.set_password(password)
+        # user.is_active = True  # Automatically activate the account
         user.save(using=self._db)
         return user
 
