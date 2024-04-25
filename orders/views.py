@@ -1,15 +1,58 @@
-import datetime
-
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
 from carts.models import CartItem
 from .forms import OrderForm
-from .models import Order
+from .models import Order, Payment, OrderProduct
+import requests
+import json
+import datetime
 
 
-# Create your views here.
 def payments(request):
-    return render(request, 'orders/payments.html')
+    url = "https://a.khalti.com/api/v2/epayment/initiate/"
+    return_url = request.POST.get('return_url')
+    amount = request.POST.get('amount')
+    user = request.user
+
+    # Convert amount to integer
+    amount = int(float(request.POST.get('amount')) * 100)
+
+    # Retrieve the recently placed order
+    latest_order = Order.objects.filter(user=user, is_ordered=False).latest('id')
+
+    # Set purchase_order_id to the order number
+    purchase_order_id = latest_order.order_number
+
+    print("return_url", return_url)
+    print("purchase_order_id", purchase_order_id)
+    print("amount", amount)
+    payload = json.dumps({
+        "return_url": return_url,
+        "website_url": "http://127.0.0.1:8000/",
+        "amount": amount,
+        "purchase_order_id": purchase_order_id,
+        "purchase_order_name": "test",
+        "customer_info": {
+            "name": user.first_name,
+            "email": user.email,
+            "phone": user.phone_number
+        }
+    })
+
+    # put your own live secet for admin
+    headers = {
+        'Authorization': 'key 3d81033b080d475c8b9911b83cbfa75f',
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    print(json.loads(response.text))
+
+    print(response.text)
+    new_res = json.loads(response.text)
+    # print(new_res['payment_url'])
+    print(type(new_res))
+    return redirect(new_res['payment_url'])
+    return render(request, 'home.html')
 
 
 def place_order(request, total=0, quantity=0, ):
@@ -70,3 +113,30 @@ def place_order(request, total=0, quantity=0, ):
             return render(request, 'orders/payments.html', context)
         else:
             return redirect('checkout')
+
+
+def order_complete(request):
+    order_number = request.GET.get('order_number')
+    transID = request.GET.get('payment_id')
+
+    try:
+        order = Order.objects.get(order_number=order_number, is_ordered=True)
+        ordered_products = OrderProduct.objects.filter(order_id=order.id)
+
+        subtotal = 0
+        for i in ordered_products:
+            subtotal += i.product_price * i.quantity
+
+        payment = Payment.objects.get(payment_id=transID)
+
+        context = {
+            'order': order,
+            'ordered_products': ordered_products,
+            'order_number': order.order_number,
+            'transID': payment.payment_id,
+            'payment': payment,
+            'subtotal': subtotal,
+        }
+        return render(request, 'orders/order_complete.html', context)
+    except (Payment.DoesNotExist, Order.DoesNotExist):
+        return redirect('home')

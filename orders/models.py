@@ -8,7 +8,7 @@ class Payment(models.Model):
     user = models.ForeignKey(Account, on_delete=models.CASCADE)
     payment_id = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100)
-    amount_paid = models.CharField(max_length=100)  #amount paid
+    amount_paid = models.CharField(max_length=100)  # amount paid
     status = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -59,7 +59,7 @@ class OrderProduct(models.Model):
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
     user = models.ForeignKey(Account, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    variations = models.ManyToManyField(Variation, blank=True)
+    variations = models.ForeignKey(Variation, on_delete=models.CASCADE)
     color = models.CharField(max_length=50)
     size = models.CharField(max_length=50)
     quantity = models.IntegerField()
@@ -70,3 +70,6 @@ class OrderProduct(models.Model):
 
     def __str__(self):
         return self.product.product_name
+from django.db import models
+
+# Create your models here.
