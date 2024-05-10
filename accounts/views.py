@@ -4,6 +4,7 @@ from .models import Account
 from django.contrib import messages, auth
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from orders.models import Order
 
 # Verification email
 from django.contrib.sites.shortcuts import get_current_site
@@ -33,35 +34,26 @@ def register(request):
             user.phone_number = phone_number
             user.save()
 
-            # user activation
-            # current_site = get_current_site(request)
-            # mail_subject = 'Please activate your account'
-            # message = render_to_string('accounts/account_verification_email.html', {
-            #     'user': user,
-            #     'domain': current_site,
-            #     'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-            #     'token': default_token_generator.make_token(user),
-            # })
-            # to_email = email
-            # send_email = EmailMessage(mail_subject, message, to=[to_email])
-            # send_email.send()
-
-            messages.success(request, 'Registration Successful.')
-            # Redirect after successful registration
-            return redirect('register')  # Adjust the URL name if needed
-        else:
-            # Render the form with errors
-            context = {
-                'form': form,
-            }
-            return render(request, 'accounts/register.html', context)
+            # USER ACTIVATION
+            current_site = get_current_site(request)
+            mail_subject = 'Please activate your account'
+            message = render_to_string('accounts/account_verification_email.html', {
+                'user': user,
+                'domain': current_site,
+                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+                'token': default_token_generator.make_token(user),
+            })
+            to_email = email
+            send_email = EmailMessage(mail_subject, message, to=[to_email])
+            send_email.send()
+            # messages.success(request, 'Thank you for registering with us. We have sent you a verification email to your email address [rathan.kumar@gmail.com]. Please verify it.')
+            return redirect('/accounts/login/?command=verification&email=' + email)
     else:
-        # Initialize a new form
         form = RegistrationForm()
-        context = {
-            'form': form,
-        }
-        return render(request, 'accounts/register.html', context)
+    context = {
+        'form': form,
+    }
+    return render(request, 'accounts/register.html', context)
 
 
 def login(request):
@@ -137,7 +129,38 @@ def logout(request):
 
 @login_required(login_url='login')
 def dashboard(request):
-    return render(request, 'accounts/dashboard.html')
+    orders = Order.objects.order_by('-created_at').filter(user_id=request.user.id, is_ordered=True)
+    orders_count = orders.count()
+    context = {
+        'orders_count': orders_count,
+    }
+    return render(request, 'accounts/dashboard.html', context)
 
-#def activate(request):
-#   return
+
+def my_orders(request):
+    orders = Order.objects.filter(user=request.user, is_ordered=True).order_by('-created_at')
+    context = {
+        'orders': orders,
+    }
+    return render(request, 'accounts/my_orders.html', context)
+
+
+def edit_profile(request):
+    return render(request, 'accounts/edit_profile.html')
+
+
+def activate(request, uidb64, token):
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = Account._default_manager.get(pk=uid)
+    except(TypeError, ValueError, OverflowError, Account.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Congratulations! Your account is activated.')
+        return redirect('login')
+    else:
+        messages.error(request, 'Invalid activation link')
+        return redirect('register')

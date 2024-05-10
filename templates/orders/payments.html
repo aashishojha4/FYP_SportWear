@@ -116,7 +116,7 @@
                         <form action="{% url 'payments' %}" method="POST">
                             {% csrf_token %}
                             <input type="hidden" name="purchase_order_id" value="{{ order.order_number }}">
-                            <input type="hidden" name="amount" value="{{ grand_total }}" id="amt">
+                            <input type="hidden" name="amount" value="10" id="amt">
                             <input type="hidden" name="return_url" value="http://127.0.0.1:8000/" id="return_url">
                             <input type="submit" class="btn btn-primary btn-block"
                                    style="background-color: purple; color: white; border-color: purple;" value="Pay with Khalti">

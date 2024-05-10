@@ -38,7 +38,7 @@ def payments(request):
         }
     })
 
-    # put your own live secet for admin
+    # put your own live secret for admin
     headers = {
         'Authorization': 'key 3d81033b080d475c8b9911b83cbfa75f',
         'Content-Type': 'application/json',
@@ -52,7 +52,8 @@ def payments(request):
     # print(new_res['payment_url'])
     print(type(new_res))
     return redirect(new_res['payment_url'])
-    return render(request, 'home.html')
+
+    return render(request, 'orders/order_complete.html')
 
 
 def place_order(request, total=0, quantity=0, ):
