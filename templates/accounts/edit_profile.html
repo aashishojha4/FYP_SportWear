@@ -15,57 +15,65 @@
 
 					</header>
 					<div class="card-body">
+						<div class="text-right">
+							{% if userprofile.profile_picture %}
+							    <img src="{{userprofile.profile_picture.url}}" alt="User profile picture" width="50" height="50" style="border-radius:50%">
+							{% else %}
+							   <img src="https://www.w3schools.com/howto/img_avatar.png" alt="Profile Picture" width="100" style="border-radius: 50px;">
+							{% endif %}
+						</div>
 						<div class="row">
 							<div class="col-md-12">
-								<form action="" method="POST">
+								<form action="{% url 'edit_profile' %}" method="POST" enctype="multipart/form-data">
 									{% csrf_token %}
 									<div class="form-row">
 										<div class="form-group col-md-6">
 											<label>First Name</label>
-											<input type="text" class="form- control" name="" id="">
+											{{user_form.first_name}}
 										</div>
 										<div class="form-group col-md-6">
 											<label>Last Name</label>
-											<input type="text" class="form- control" name="" id="">
+											{{user_form.last_name}}
 										</div>
 									</div>
 									<div class="form-row">
 										<div class="form-group col-md-6">
 											<label>Phone Number</label>
-											<input type="text" class="form- control" name="" id="">
+											{{user_form.phone_number}}
 										</div>
 										<div class="form-group col-md-6">
 											<label>Profile Picture</label>
-											<input type="file" class="form- control" name="" id="">
+											{{profile_form.profile_picture}}
 										</div>
 									</div>
 									<div class="form-group">
-										<label>Address Line 1 </label>
-										<input type="text" class="form- control" name="" id="">
+										<label>Address Line 1</label>
+										{{profile_form.address_line_1}}
 									</div>
 									<div class="form-group">
-										<label>Address Line 2 </label>
-										<input type="text" class="form- control" name="" id="">
+										<label>Address Line 2</label>
+										{{profile_form.address_line_2}}
 									</div>
 									<div class="form-row">
 										<div class="form-group col-md-4">
 											<label>City</label>
-											<input type="text" class="form- control" name="" id="">
+											{{profile_form.city}}
 										</div>
 										<div class="form-group col-md-4">
 											<label>State</label>
-											<input type="text" class="form- control" name="" id="">
+											{{profile_form.state}}
 										</div>
 										<div class="form-group col-md-4">
 											<label>Country</label>
-											<input type="text" class="form- control" name="" id="">
+											{{profile_form.country}}
 										</div>
 									</div>
-									<input type="submit" value="Save" class="btn btn-primary">
+									<button type="submit" class="btn btn-primary">Save</button>
 								</form>
 							</div>
-						</div> <!-- row.// -->
-					</div> <!-- card-body .// -->
+						</div>
+					</div>
+
 				</article> <!-- order-group.// -->
 			</main>
 		</div> <!-- row.// -->

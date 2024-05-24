@@ -7,7 +7,7 @@
             </div>
             <div class="col-md-8 text-md-center">
                 <span class="px-2"><a href="mailto:sportwear199@gmail.com">sportwear199@gmail.com</a></span>
-                <span class="px-2"><a href="tel:+9779825351987">+977 9825351987</a></span>
+                <span class="px-2"><a href="tel:+9779825351987">+977 9800000007</a></span>
                 <span class="px-2">Maitidevi, Kathmandu, Nepal</span>
             </div>
             <div class="col-md-2 text-md-right text-muted">
@@ -19,3 +19,15 @@
     </div><!-- //container -->
 </footer>
 <!-- ========================= FOOTER END // ========================= -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script>
+    $(document).ready(function(){
+        $('.thumb a').click(function(e){
+            e.preventDefault(); // Prevent default link behavior
+            $('.mainImage img').attr('src', $(this).attr("href")); // Update main image src
+        });
+    });
+</script>
+
+</body>
+</html>

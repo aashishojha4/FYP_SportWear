@@ -1,20 +1,25 @@
+from django.core.exceptions import BadRequest
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.template.loader import render_to_string
+from django.core.mail import EmailMessage
 from carts.models import CartItem
+from store.models import Product
 from .forms import OrderForm
 from .models import Order, Payment, OrderProduct
 import requests
 import json
 import datetime
+from django.db import transaction
 
 
+@login_required
 def payments(request):
     url = "https://a.khalti.com/api/v2/epayment/initiate/"
     return_url = request.POST.get('return_url')
     amount = request.POST.get('amount')
     user = request.user
-
-    # Convert amount to integer
-    amount = int(float(request.POST.get('amount')) * 100)
 
     # Retrieve the recently placed order
     latest_order = Order.objects.filter(user=user, is_ordered=False).latest('id')
@@ -22,9 +27,6 @@ def payments(request):
     # Set purchase_order_id to the order number
     purchase_order_id = latest_order.order_number
 
-    print("return_url", return_url)
-    print("purchase_order_id", purchase_order_id)
-    print("amount", amount)
     payload = json.dumps({
         "return_url": return_url,
         "website_url": "http://127.0.0.1:8000/",
@@ -38,28 +40,69 @@ def payments(request):
         }
     })
 
-    # put your own live secret for admin
     headers = {
         'Authorization': 'key 3d81033b080d475c8b9911b83cbfa75f',
         'Content-Type': 'application/json',
     }
 
     response = requests.request("POST", url, headers=headers, data=payload)
-    print(json.loads(response.text))
-
-    print(response.text)
     new_res = json.loads(response.text)
-    # print(new_res['payment_url'])
-    print(type(new_res))
     return redirect(new_res['payment_url'])
 
-    return render(request, 'orders/order_complete.html')
+
+@login_required
+def verifyKhalti(request, purchase_order_id=None, payment=None):
+    url = "https://a.khalti.com/api/v2/epayment/lookup/"
+    if request.method == 'GET':
+        headers = {
+            'Authorization': 'key 3d81033b080d475c8b9911b83cbfa75f',
+            'Content-Type': 'application/json',
+        }
+        pidx = request.GET.get('pidx')
+        data = json.dumps({
+            'payment_id': pidx
+        })
+        res = requests.request('POST', url, headers=headers, data=data)
+
+        new_res = json.loads(res.text)
+
+        if new_res['status'] == 'Completed':
+            # Update order status to mark it as completed
+            Order.objects.filter(order_number=purchase_order_id).update(is_ordered=True)
+        else:
+            raise BadRequest("Payment verification failed")
+
+        # Move the cart items to Order Product table
+        cart_items = CartItem.objects.filter(user=request.user)
+
+        for item in cart_items:
+            orderproduct = OrderProduct.objects.create(
+                order_id=purchase_order_id,
+                user_id=request.user.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                product_price=item.product.price,
+                ordered=True
+            )
+            product_variation = item.variations.all()
+            orderproduct.variations.set(product_variation)
+
+            # Reduce the quantity of the sold products
+            product = Product.objects.get(id=item.product_id)
+            product.stock -= item.quantity
+            product.save()
+
+        # Clear cart
+        CartItem.objects.filter(user=request.user).delete()
+        return redirect('home')
+    else:
+        raise BadRequest("Invalid request method")
 
 
-def place_order(request, total=0, quantity=0, ):
+@login_required
+def place_order(request, total=0, quantity=0):
     current_user = request.user
 
-    # If the cart count is less than or equal to 0, then redirect back to shop
     cart_items = CartItem.objects.filter(user=current_user)
     cart_count = cart_items.count()
     if cart_count <= 0:
@@ -76,34 +119,30 @@ def place_order(request, total=0, quantity=0, ):
     if request.method == 'POST':
         form = OrderForm(request.POST)
         if form.is_valid():
-            # Store all the billing info inside Order table
-            data = Order()
-            data.user = current_user
-            data.first_name = form.cleaned_data['first_name']
-            data.last_name = form.cleaned_data['last_name']
-            data.phone = form.cleaned_data['phone']
-            data.email = form.cleaned_data['email']
-            data.address_line_1 = form.cleaned_data['address_line_1']
-            data.address_line_2 = form.cleaned_data['address_line_2']
-            data.country = form.cleaned_data['country']
-            data.state = form.cleaned_data['state']
-            data.city = form.cleaned_data['city']
-            data.order_note = form.cleaned_data['order_note']
-            data.order_total = grand_total
-            data.tax = tax
-            data.ip = request.META.get('REMOTE_ADDR')
-            data.save()
-            # Generate order number
-            yr = int(datetime.date.today().strftime('%Y'))
-            dt = int(datetime.date.today().strftime('%d'))
-            mt = int(datetime.date.today().strftime('%m'))
-            d = datetime.date(yr, mt, dt)
-            current_date = d.strftime("%Y%m%d")  # 20240423
-            order_number = current_date + str(data.id)
-            data.order_number = order_number
-            data.save()
+            data = form.cleaned_data
+            order = Order.objects.create(
+                user=current_user,
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                phone=data['phone'],
+                email=data['email'],
+                address_line_1=data['address_line_1'],
+                address_line_2=data['address_line_2'],
+                country=data['country'],
+                state=data['state'],
+                city=data['city'],
+                order_note=data['order_note'],
+                order_total=grand_total,
+                tax=tax,
+                ip=request.META.get('REMOTE_ADDR')
+            )
 
-            order = Order.objects.get(user=current_user, is_ordered=False, order_number=order_number)
+            # Generate order number
+            current_date = datetime.date.today().strftime("%Y%m%d")
+            order_number = current_date + str(order.id)
+            order.order_number = order_number
+            order.save()
+
             context = {
                 'order': order,
                 'cart_items': cart_items,
@@ -116,6 +155,7 @@ def place_order(request, total=0, quantity=0, ):
             return redirect('checkout')
 
 
+@login_required
 def order_complete(request):
     order_number = request.GET.get('order_number')
     transID = request.GET.get('payment_id')
@@ -124,11 +164,14 @@ def order_complete(request):
         order = Order.objects.get(order_number=order_number, is_ordered=True)
         ordered_products = OrderProduct.objects.filter(order_id=order.id)
 
-        subtotal = 0
-        for i in ordered_products:
-            subtotal += i.product_price * i.quantity
+        subtotal = sum([i.product_price * i.quantity for i in ordered_products])
 
-        payment = Payment.objects.get(payment_id=transID)
+        payment = Payment.objects.create(
+            user=request.user,
+            payment_id=transID,
+            amount=order.order_total,
+            status="Completed"  # Assuming payment is successful
+        )
 
         context = {
             'order': order,
@@ -141,3 +184,4 @@ def order_complete(request):
         return render(request, 'orders/order_complete.html', context)
     except (Payment.DoesNotExist, Order.DoesNotExist):
         return redirect('home')
+
